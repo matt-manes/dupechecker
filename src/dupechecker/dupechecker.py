@@ -1,49 +1,52 @@
-import difflib
-from pathier import Pathier
-from itertools import combinations
 import argparse
-from noiftimer import time_it
+import filecmp
+from itertools import combinations
+
 from griddle import griddy
+from noiftimer import time_it
+from pathier import Pathier
 
 
-def get_comparisons(path: Pathier) -> dict[Pathier, tuple[Pathier, ...]]:
-    files = list(path.glob("*.*"))
-    files = sorted(files, key=lambda f: f.stem)
-    pairs = list(combinations(files, 2))
-    comparisons = {}
-    for p1, p2 in pairs:
-        if p1 not in comparisons:
-            comparisons[p1] = [p2]
-        else:
-            comparisons[p1].append(p2)
-    return comparisons
+def get_pairs(path: Pathier, recursive: bool = False) -> list[tuple[Pathier, Pathier]]:
+    files = list(path.rglob("*.*")) if recursive else list(path.glob("*.*"))
+    return list(combinations(files, 2))
 
 
-def compare_files(path: Pathier) -> dict[tuple[Pathier, Pathier], float]:
-    """Compare binary content of files in `path`.
-    Returns a dictionary where each key is a tuple containing the two files that were compared and the value is their similarity in the range [0,1]."""
-    comparisons = get_comparisons(path)
-    matches = {}
-    for comparee in comparisons:
-        matcher = difflib.SequenceMatcher()
-        matcher.set_seq2(comparee.read_bytes())  # type: ignore
-        for file in comparisons[comparee]:
-            matcher.set_seq1(file.read_bytes())  # type: ignore
-            matches[(comparee, file)] = matcher.real_quick_ratio()
-    sorted_keys = sorted(matches.keys(), key=lambda m: matches[m], reverse=True)
-    matches = {key: matches[key] for key in sorted_keys}
-    return matches
+def compare_files(files: tuple[Pathier, Pathier]) -> bool:
+    return filecmp.cmp(files[0], files[1], False)
+
+
+def get_matches(pairs: list[tuple[Pathier, Pathier]]) -> list[tuple[Pathier, Pathier]]:
+    return [pair for pair in pairs if compare_files(pair)]
+
+
+def combine_matches(matches: list[tuple[Pathier, Pathier]]) -> list[list[Pathier]]:
+    combined_matches = []
+    while len(matches) > 0:
+        this_match = matches.pop()
+        combined_match = list(this_match)
+        poppers = []
+        for j, match in enumerate(matches):
+            if match[0] in combined_match and match[1] not in combined_match:
+                combined_match.append(match[1])
+                poppers.append(match)
+            elif match[1] in combined_match and match[0] not in combined_match:
+                combined_match.append(match[0])
+                poppers.append(match)
+        combined_matches.append(combined_match)
+        for popper in poppers:
+            matches.pop(matches.index(popper))
+    return combined_matches
 
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-t",
-        "--threshold",
-        type=float,
-        default=0.0,
-        help=""" Only show matches with a ratio above this value. Range should be [0,100].""",
+        "-r",
+        "--recursive",
+        action="store_true",
+        help=""" Glob files to compare recursively. """,
     )
 
     parser.add_argument(
@@ -57,7 +60,6 @@ def get_args() -> argparse.Namespace:
     args = parser.parse_args()
     if not args.path == Pathier.cwd():
         args.path = Pathier(args.path)
-    args.threshold = args.threshold / 100
 
     return args
 
@@ -66,14 +68,12 @@ def get_args() -> argparse.Namespace:
 def main(args: argparse.Namespace | None = None):
     if not args:
         args = get_args()
-    matches = compare_files(args.path)
-    results = [
-        (match[0].name, match[1].name, f"{matches[match]*100:.2f}%")
-        for match in matches
-        if matches[match] >= args.threshold
-    ]
-    print("Comparison results:")
-    print(griddy(results, ["file1", "file2", "percentage"]))
+    matches = combine_matches(get_matches(get_pairs(args.path, args.recursive)))
+    if matches:
+        print("Duplicate files:")
+        print(griddy(matches))
+    else:
+        print("No duplicates detected.")
 
 
 if __name__ == "__main__":
