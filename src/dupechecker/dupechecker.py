@@ -74,14 +74,17 @@ def get_args() -> argparse.Namespace:
 
 def delete_wizard(matches: list[list[Pathier]]):
     """Ask which file to keep for each set."""
+    print()
     print("Enter the corresponding number of the file to keep.")
     print(
         "Press 'Enter' without giving a number to skip deleting any files for the given set."
     )
+    print()
     for match in matches:
         map_ = {str(i): file for i, file in enumerate(match, 1)}
-        prompt = " | ".join(f"({i})<->{file}" for i, file in map_.items())
-        keeper = input(prompt + " ")
+        options = "\n".join(f"({i}) {file}" for i, file in map_.items()) + "\n"
+        print(options)
+        keeper = input(f"Enter number of file to keep ({', '.join(map_.keys())}): ")
         if keeper:
             [map_[num].delete() for num in map_ if num != keeper]
 
@@ -94,6 +97,7 @@ def autodelete(matches: list[list[Pathier]]):
 
 
 def dupechecker(args: argparse.Namespace | None = None):
+    print()
     if not args:
         args = get_args()
     s = [
