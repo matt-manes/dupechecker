@@ -2,12 +2,10 @@ import argparse
 import filecmp
 import time
 from concurrent.futures import ThreadPoolExecutor
-from itertools import combinations
 
 from griddle import griddy
 from pathier import Pathier
 from printbuddies import Spinner
-from noiftimer import time_it
 
 
 def get_duplicates(path: Pathier, recursive: bool = False) -> list[list[Pathier]]:
@@ -95,7 +93,6 @@ def autodelete(matches: list[list[Pathier]]):
         [file.delete() for file in match]
 
 
-@time_it()
 def dupechecker(args: argparse.Namespace | None = None):
     if not args:
         args = get_args()
@@ -116,10 +113,11 @@ def dupechecker(args: argparse.Namespace | None = None):
         print(f"Found {len(matches)} duplicate sets of files.")
         if not args.no_show:
             print(griddy(matches))
-        if args.delete_dupes:
-            delete_wizard(matches)
-        elif args.autodelete:
-            autodelete(matches)
+        if args.delete_dupes or args.autodelete:
+            size = args.path.size()
+            delete_wizard(matches) if args.delete_dupes else autodelete(matches)
+            deleted_size = size - args.path.size()
+            print(f"Deleted {Pathier.format_size(deleted_size)}.")
     else:
         print("No duplicates detected.")
 
