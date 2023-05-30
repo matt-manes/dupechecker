@@ -1,10 +1,13 @@
 import argparse
 import filecmp
 from itertools import combinations
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 from griddle import griddy
 from noiftimer import time_it
 from pathier import Pathier
+from printbuddies import Spinner, clear
 
 
 def get_pairs(path: Pathier, recursive: bool = False) -> list[tuple[Pathier, Pathier]]:
@@ -39,6 +42,10 @@ def combine_matches(matches: list[tuple[Pathier, Pathier]]) -> list[list[Pathier
     return combined_matches
 
 
+def process_files(pairs: list[tuple[Pathier, Pathier]]) -> list[list[Pathier]]:
+    return combine_matches(get_matches(pairs))
+
+
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
@@ -68,9 +75,18 @@ def get_args() -> argparse.Namespace:
 def main(args: argparse.Namespace | None = None):
     if not args:
         args = get_args()
-    matches = combine_matches(get_matches(get_pairs(args.path, args.recursive)))
+    pairs = get_pairs(args.path, args.recursive)
+    print(f"Comparing {len(pairs)} pairs of files for duplicates...")
+    spinner = Spinner()
+    with ThreadPoolExecutor() as exc:
+        thread = exc.submit(process_files, pairs)
+        while not thread.done():
+            spinner.display()
+            time.sleep(0.1)
+        matches = thread.result()
+    clear()
     if matches:
-        print("Duplicate files:")
+        print(f"Found {len(matches)} duplicate files:")
         print(griddy(matches))
     else:
         print("No duplicates detected.")
