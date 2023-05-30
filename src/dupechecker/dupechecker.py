@@ -72,17 +72,23 @@ def get_args() -> argparse.Namespace:
 
 
 @time_it()
-def main(args: argparse.Namespace | None = None):
+def dupechecker(args: argparse.Namespace | None = None):
     if not args:
         args = get_args()
     pairs = get_pairs(args.path, args.recursive)
     print(f"Comparing {len(pairs)} pairs of files for duplicates...")
-    spinner = Spinner()
+    s = [
+        ch.rjust(i + j)
+        for i in range(1, 25, 3)
+        for j, ch in enumerate(["/", "-", "\\"])
+    ]
+    s += s[::-1]
+    spinner = Spinner(s)
     with ThreadPoolExecutor() as exc:
         thread = exc.submit(process_files, pairs)
         while not thread.done():
             spinner.display()
-            time.sleep(0.1)
+            time.sleep(0.025)
         matches = thread.result()
     clear()
     if matches:
@@ -93,4 +99,4 @@ def main(args: argparse.Namespace | None = None):
 
 
 if __name__ == "__main__":
-    main(get_args())
+    dupechecker(get_args())

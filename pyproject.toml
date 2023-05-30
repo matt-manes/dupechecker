@@ -40,4 +40,4 @@ exclude = [
     ".gitignore"
     ]
 [project.scripts]
-dupechecker = "dupechecker.dupechecker:main"
+dupechecker = "dupechecker.dupechecker:dupechecker"
