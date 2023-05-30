@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dupechecker"
-description = "Check binary content of files and compare for similarity"
+description = "Check for and delete duplicate files from the command line."
 version = "0.0.0"
 requires-python = ">=3.10"
 dependencies = ["griddle", "pathier", "printbuddies", "pytest"]
 readme = "README.md"
-keywords = ["difflib", "cli", "filesystem"]
+keywords = ["filecmp", "cli", "filesystem"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
