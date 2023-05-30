@@ -46,6 +46,13 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "-ad",
+        "--autodelete",
+        action="store_true",
+        help=""" Automatically decide which file to keep and which to delete from each set of duplicate files instead of asking which to keep. """,
+    )
+
+    parser.add_argument(
         "path",
         type=str,
         default=Pathier.cwd(),
@@ -74,6 +81,13 @@ def delete_wizard(matches: list[list[Pathier]]):
             [map_[num].delete() for num in map_ if num != keeper]
 
 
+def autodelete(matches: list[list[Pathier]]):
+    """Keep one of each set in `matches` and delete the others."""
+    for match in matches:
+        match.pop()
+        [file.delete() for file in match]
+
+
 @time_it()
 def dupechecker(args: argparse.Namespace | None = None):
     if not args:
@@ -96,6 +110,8 @@ def dupechecker(args: argparse.Namespace | None = None):
         print(griddy(matches))
         if args.delete_dupes:
             delete_wizard(matches)
+        elif args.autodelete:
+            autodelete(matches)
     else:
         print("No duplicates detected.")
 
