@@ -68,6 +68,15 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "-d",
+        "--delete_dupes",
+        action="store_true",
+        help=""" After finding duplicates, delete all but one copy.
+        For each set of duplicates, the tool will ask you to enter the number corresponding to the copy you want to keep.
+        Pressing 'enter' without entering a number will skip that set without deleting anything.""",
+    )
+
+    parser.add_argument(
         "path",
         type=str,
         default=Pathier.cwd(),
@@ -80,6 +89,20 @@ def get_args() -> argparse.Namespace:
         args.path = Pathier(args.path)
 
     return args
+
+
+def delete_wizard(matches: list[list[Pathier]]):
+    """Ask which file to keep for each set."""
+    print("Enter the corresponding number of the file to keep.")
+    print(
+        "Press 'Enter' without giving a number to skip deleting any files for the given set."
+    )
+    for match in matches:
+        map_ = {str(i): file for i, file in enumerate(match, 1)}
+        prompt = " | ".join(f"({i})<->{file}" for i, file in map_.items())
+        keeper = input(prompt + " ")
+        if keeper:
+            [map_[num].delete() for num in map_ if num != keeper]
 
 
 @time_it()
@@ -104,6 +127,8 @@ def dupechecker(args: argparse.Namespace | None = None):
     if matches:
         print(f"Found {len(matches)} duplicate files:")
         print(griddy(matches))
+        if args.delete_dupes:
+            delete_wizard(matches)
     else:
         print("No duplicates detected.")
 
