@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "dupechecker"
 description = "Check for and delete duplicate files from the command line."
-version = "0.0.0"
+version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = ["griddle", "pathier", "printbuddies", "pytest"]
 readme = "README.md"
