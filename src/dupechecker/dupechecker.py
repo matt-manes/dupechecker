@@ -53,6 +53,13 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "-ns",
+        "--no_show",
+        action="store_true",
+        help=""" Don't show printout of matching files. """,
+    )
+
+    parser.add_argument(
         "path",
         type=str,
         default=Pathier.cwd(),
@@ -106,8 +113,9 @@ def dupechecker(args: argparse.Namespace | None = None):
                 time.sleep(0.025)
             matches = thread.result()
     if matches:
-        print(f"Found {len(matches)} duplicate sets of files:")
-        print(griddy(matches))
+        print(f"Found {len(matches)} duplicate sets of files.")
+        if not args.no_show:
+            print(griddy(matches))
         if args.delete_dupes:
             delete_wizard(matches)
         elif args.autodelete:
