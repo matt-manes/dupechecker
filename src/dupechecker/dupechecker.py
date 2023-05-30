@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 from itertools import combinations
 
 from griddle import griddy
-from noiftimer import time_it
 from pathier import Pathier
 from printbuddies import Spinner
 
@@ -45,6 +44,8 @@ def combine_matches(matches: list[tuple[Pathier, Pathier]]) -> list[list[Pathier
                 poppers.append(match)
             elif match[1] in combined_match and match[0] not in combined_match:
                 combined_match.append(match[0])
+                poppers.append(match)
+            elif match[0] in combined_match and match[1] in combined_match:
                 poppers.append(match)
         combined_matches.append(combined_match)
         for popper in poppers:
@@ -105,7 +106,6 @@ def delete_wizard(matches: list[list[Pathier]]):
             [map_[num].delete() for num in map_ if num != keeper]
 
 
-@time_it()
 def dupechecker(args: argparse.Namespace | None = None):
     if not args:
         args = get_args()
