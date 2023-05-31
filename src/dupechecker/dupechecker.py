@@ -2,27 +2,22 @@ import argparse
 import filecmp
 import time
 from concurrent.futures import ThreadPoolExecutor
+from itertools import combinations
 
 from griddle import griddy
 from pathier import Pathier
 from printbuddies import Spinner
+from younotyou import younotyou
 
 
-def get_duplicates(
-    paths: list[Pathier], recursive: bool = False
-) -> list[list[Pathier]]:
-    """Return a list of lists for duplicate files in `path`.
-    Each sub-list will contain 2 or more files determined to be equivalent files.
-    If `recursive` is `True`, files from `path` and it's subdirectories will be compared."""
-    files = []
-    for path in paths:
-        files.extend(list(path.rglob("*.*")) if recursive else list(path.glob("*.*")))
+def get_duplicates(paths: list[Pathier]) -> list[list[Pathier]]:
+    """Return a list of lists for duplicate files in `paths`."""
     matching_sets = []
-    while len(files) > 0:
-        comparee = files.pop()
-        matching_files = [file for file in files if filecmp.cmp(comparee, file, False)]
+    while len(paths) > 0:
+        comparee = paths.pop()
+        matching_files = [file for file in paths if filecmp.cmp(comparee, file, False)]
         if matching_files:
-            [files.pop(files.index(file)) for file in matching_files]
+            [paths.pop(paths.index(file)) for file in matching_files]
             matching_files.insert(0, comparee)
             matching_sets.append(matching_files)
     return matching_sets
@@ -36,6 +31,16 @@ def get_args() -> argparse.Namespace:
         "--recursive",
         action="store_true",
         help=""" Glob files to compare recursively. """,
+    )
+
+    parser.add_argument(
+        "-i",
+        "--ignores",
+        type=str,
+        nargs="*",
+        default=[],
+        help=""" Ignore files matching these patterns.
+        e.g. `dupechecker -i *.wav` will compare all files in the current working directory except .wav files.""",
     )
 
     parser.add_argument(
@@ -66,12 +71,21 @@ def get_args() -> argparse.Namespace:
         type=str,
         default=[Pathier.cwd()],
         nargs="*",
-        help=""" The path to compare files in. """,
+        help=""" The paths to compare files in. """,
     )
 
     args = parser.parse_args()
     if not args.paths == [Pathier.cwd()]:
         args.paths = [Pathier(path) for path in args.paths]
+    files = []
+    print("Gathering files...")
+    for path in args.paths:
+        files.extend(
+            list(path.rglob("*.*")) if args.recursive else list(path.glob("*.*"))
+        )
+    args.paths = younotyou([str(file) for file in files], exclude_patterns=args.ignores)
+    num_comparisons = len(list(combinations(args.paths, 2)))
+    print(f"Making {num_comparisons} comparisons between {len(args.paths)} files...")
 
     return args
 
@@ -112,7 +126,7 @@ def dupechecker(args: argparse.Namespace | None = None):
     s += s[::-1]
     with Spinner(s) as spinner:
         with ThreadPoolExecutor() as exc:
-            thread = exc.submit(get_duplicates, args.paths, args.recursive)
+            thread = exc.submit(get_duplicates, args.paths)
             while not thread.done():
                 spinner.display()
                 time.sleep(0.025)
