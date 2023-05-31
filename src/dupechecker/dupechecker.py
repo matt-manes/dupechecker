@@ -8,11 +8,15 @@ from pathier import Pathier
 from printbuddies import Spinner
 
 
-def get_duplicates(path: Pathier, recursive: bool = False) -> list[list[Pathier]]:
+def get_duplicates(
+    paths: list[Pathier], recursive: bool = False
+) -> list[list[Pathier]]:
     """Return a list of lists for duplicate files in `path`.
     Each sub-list will contain 2 or more files determined to be equivalent files.
     If `recursive` is `True`, files from `path` and it's subdirectories will be compared."""
-    files = list(path.rglob("*.*")) if recursive else list(path.glob("*.*"))
+    files = []
+    for path in paths:
+        files.extend(list(path.rglob("*.*")) if recursive else list(path.glob("*.*")))
     matching_sets = []
     while len(files) > 0:
         comparee = files.pop()
@@ -58,16 +62,16 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "path",
+        "paths",
         type=str,
-        default=Pathier.cwd(),
-        nargs="?",
+        default=[Pathier.cwd()],
+        nargs="*",
         help=""" The path to compare files in. """,
     )
 
     args = parser.parse_args()
-    if not args.path == Pathier.cwd():
-        args.path = Pathier(args.path)
+    if not args.paths == [Pathier.cwd()]:
+        args.paths = [Pathier(path) for path in args.paths]
 
     return args
 
@@ -108,7 +112,7 @@ def dupechecker(args: argparse.Namespace | None = None):
     s += s[::-1]
     with Spinner(s) as spinner:
         with ThreadPoolExecutor() as exc:
-            thread = exc.submit(get_duplicates, args.path, args.recursive)
+            thread = exc.submit(get_duplicates, args.paths, args.recursive)
             while not thread.done():
                 spinner.display()
                 time.sleep(0.025)
