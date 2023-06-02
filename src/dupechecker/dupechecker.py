@@ -22,6 +22,17 @@ def get_duplicates(paths: list[Pathier]) -> list[list[Pathier]]:
             matching_sets.append(matching_files)
     return matching_sets
 
+def sort_by_size(paths: list[Pathier])->list[list[Pathier]]:
+    """ Returns a list of lists where each sublist is a list of files that have the same size. """
+    sizes = {}
+    for path in paths:
+        size = path.size()
+        if size in sizes:
+            sizes[size].append(path)
+        else:
+            sizes[size] = [path]
+    return list(sizes.values())
+    
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -129,13 +140,16 @@ def dupechecker(args: argparse.Namespace | None = None):
         for j, ch in enumerate(["/", "-", "\\"])
     ]
     s += s[::-1]
+    size_sorted = sort_by_size(args.paths)
+    matches = []
     with Spinner(s) as spinner:
         with ThreadPoolExecutor() as exc:
-            thread = exc.submit(get_duplicates, deepcopy(args.paths))
-            while not thread.done():
+            threads = [exc.submit(get_duplicates, paths) for paths in size_sorted]
+            while any(not thread.done() for thread in threads):
                 spinner.display()
                 time.sleep(0.025)
-            matches = thread.result()
+            for thread in threads:
+                matches.extend(thread.result())
     if matches:
         print(f"Found {len(matches)} duplicate sets of files.")
         if not args.no_show:
