@@ -2,7 +2,7 @@ import argparse
 import filecmp
 import time
 from concurrent.futures import ThreadPoolExecutor
-from itertools import combinations
+from copy import deepcopy
 
 from griddle import griddy
 from pathier import Pathier
@@ -83,9 +83,13 @@ def get_args() -> argparse.Namespace:
         files.extend(
             list(path.rglob("*.*")) if args.recursive else list(path.glob("*.*"))
         )
-    args.paths = younotyou([str(file) for file in files], exclude_patterns=args.ignores)
-    num_comparisons = len(list(combinations(args.paths, 2)))
-    print(f"Making {num_comparisons} comparisons between {len(args.paths)} files...")
+    args.paths = [
+        Pathier(path)
+        for path in younotyou(
+            [str(file) for file in files], exclude_patterns=args.ignores
+        )
+    ]
+    print(f"Comparing {len(args.paths)} files...")
 
     return args
 
@@ -105,6 +109,7 @@ def delete_wizard(matches: list[list[Pathier]]):
         keeper = input(f"Enter number of file to keep ({', '.join(map_.keys())}): ")
         if keeper:
             [map_[num].delete() for num in map_ if num != keeper]
+        print()
 
 
 def autodelete(matches: list[list[Pathier]]):
@@ -126,7 +131,7 @@ def dupechecker(args: argparse.Namespace | None = None):
     s += s[::-1]
     with Spinner(s) as spinner:
         with ThreadPoolExecutor() as exc:
-            thread = exc.submit(get_duplicates, args.paths)
+            thread = exc.submit(get_duplicates, deepcopy(args.paths))
             while not thread.done():
                 spinner.display()
                 time.sleep(0.025)
@@ -134,11 +139,16 @@ def dupechecker(args: argparse.Namespace | None = None):
     if matches:
         print(f"Found {len(matches)} duplicate sets of files.")
         if not args.no_show:
-            print(griddy(matches))
+            print(
+                griddy(
+                    [["\n".join([str(file) for file in match])] for match in matches]
+                )
+            )
         if args.delete_dupes or args.autodelete:
-            size = args.path.size()
+            size = lambda: sum(path.size() for path in args.paths)  # type: ignore
+            start_size = size()
             delete_wizard(matches) if args.delete_dupes else autodelete(matches)
-            deleted_size = size - args.path.size()
+            deleted_size = start_size - size()
             print(f"Deleted {Pathier.format_size(deleted_size)}.")
     else:
         print("No duplicates detected.")
