@@ -2,6 +2,7 @@ import argparse
 import filecmp
 import time
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 
 from griddle import griddy
 from noiftimer import Timer
@@ -13,6 +14,7 @@ from younotyou import younotyou
 def find_dupes(paths: list[Pathier]) -> list[list[Pathier]]:
     """Return a list of lists for duplicate files in `paths`."""
     matching_sets = []
+    paths = deepcopy(paths)
     while len(paths) > 0:
         comparee = paths.pop()
         matching_files = [file for file in paths if filecmp.cmp(comparee, file, False)]
