@@ -23,7 +23,7 @@ def find_dupes(paths: list[Pathier]) -> list[list[Pathier]]:
     return matching_sets
 
 
-def sort_by_size(paths: list[Pathier]) -> list[list[Pathier]]:
+def group_by_size(paths: list[Pathier]) -> list[list[Pathier]]:
     """Returns a list of lists where each sublist is a list of files that have the same size."""
     sizes = {}
     for path in paths:
@@ -61,11 +61,11 @@ def autodelete(matches: list[list[Pathier]]):
 
 
 def dupechecker(paths: list[Pathier]) -> list[list[Pathier]]:
-    sorted_paths = sort_by_size(paths)
+    grouped_paths = group_by_size(paths)
     matches = []
     with Spinner() as spinner:
         with ThreadPoolExecutor() as exc:
-            threads = [exc.submit(find_dupes, paths) for paths in sorted_paths]
+            threads = [exc.submit(find_dupes, paths) for paths in grouped_paths]
             while any(not thread.done() for thread in threads):
                 spinner.display()
                 time.sleep(0.025)
