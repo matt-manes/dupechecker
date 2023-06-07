@@ -2,15 +2,15 @@ import argparse
 import filecmp
 import time
 from concurrent.futures import ThreadPoolExecutor
-from copy import deepcopy
 
 from griddle import griddy
+from noiftimer import Timer
 from pathier import Pathier
 from printbuddies import Spinner
 from younotyou import younotyou
 
 
-def get_duplicates(paths: list[Pathier]) -> list[list[Pathier]]:
+def find_dupes(paths: list[Pathier]) -> list[list[Pathier]]:
     """Return a list of lists for duplicate files in `paths`."""
     matching_sets = []
     while len(paths) > 0:
@@ -22,8 +22,9 @@ def get_duplicates(paths: list[Pathier]) -> list[list[Pathier]]:
             matching_sets.append(matching_files)
     return matching_sets
 
-def sort_by_size(paths: list[Pathier])->list[list[Pathier]]:
-    """ Returns a list of lists where each sublist is a list of files that have the same size. """
+
+def sort_by_size(paths: list[Pathier]) -> list[list[Pathier]]:
+    """Returns a list of lists where each sublist is a list of files that have the same size."""
     sizes = {}
     for path in paths:
         size = path.size()
@@ -32,7 +33,46 @@ def sort_by_size(paths: list[Pathier])->list[list[Pathier]]:
         else:
             sizes[size] = [path]
     return list(sizes.values())
-    
+
+
+def delete_wizard(matches: list[list[Pathier]]):
+    """Ask which file to keep for each set."""
+    print()
+    print("Enter the corresponding number of the file to keep.")
+    print(
+        "Press 'Enter' without giving a number to skip deleting any files for the given set."
+    )
+    print()
+    for match in matches:
+        map_ = {str(i): file for i, file in enumerate(match, 1)}
+        options = "\n".join(f"({i}) {file}" for i, file in map_.items()) + "\n"
+        print(options)
+        keeper = input(f"Enter number of file to keep ({', '.join(map_.keys())}): ")
+        if keeper:
+            [map_[num].delete() for num in map_ if num != keeper]
+        print()
+
+
+def autodelete(matches: list[list[Pathier]]):
+    """Keep one of each set in `matches` and delete the others."""
+    for match in matches:
+        match.pop()
+        [file.delete() for file in match]
+
+
+def dupechecker(paths: list[Pathier]) -> list[list[Pathier]]:
+    sorted_paths = sort_by_size(paths)
+    matches = []
+    with Spinner() as spinner:
+        with ThreadPoolExecutor() as exc:
+            threads = [exc.submit(find_dupes, paths) for paths in sorted_paths]
+            while any(not thread.done() for thread in threads):
+                spinner.display()
+                time.sleep(0.025)
+            for thread in threads:
+                matches.extend(thread.result())
+    return matches
+
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -100,58 +140,20 @@ def get_args() -> argparse.Namespace:
             [str(file) for file in files], exclude_patterns=args.ignores
         )
     ]
-    print(f"Comparing {len(args.paths)} files...")
+    print(f"Checking {len(args.paths)} files...")
 
     return args
 
 
-def delete_wizard(matches: list[list[Pathier]]):
-    """Ask which file to keep for each set."""
-    print()
-    print("Enter the corresponding number of the file to keep.")
-    print(
-        "Press 'Enter' without giving a number to skip deleting any files for the given set."
-    )
-    print()
-    for match in matches:
-        map_ = {str(i): file for i, file in enumerate(match, 1)}
-        options = "\n".join(f"({i}) {file}" for i, file in map_.items()) + "\n"
-        print(options)
-        keeper = input(f"Enter number of file to keep ({', '.join(map_.keys())}): ")
-        if keeper:
-            [map_[num].delete() for num in map_ if num != keeper]
-        print()
-
-
-def autodelete(matches: list[list[Pathier]]):
-    """Keep one of each set in `matches` and delete the others."""
-    for match in matches:
-        match.pop()
-        [file.delete() for file in match]
-
-
-def dupechecker(args: argparse.Namespace | None = None):
+def main(args: argparse.Namespace | None = None):
     print()
     if not args:
         args = get_args()
-    s = [
-        ch.rjust(i + j)
-        for i in range(1, 25, 3)
-        for j, ch in enumerate(["/", "-", "\\"])
-    ]
-    s += s[::-1]
-    size_sorted = sort_by_size(args.paths)
-    matches = []
-    with Spinner(s) as spinner:
-        with ThreadPoolExecutor() as exc:
-            threads = [exc.submit(get_duplicates, paths) for paths in size_sorted]
-            while any(not thread.done() for thread in threads):
-                spinner.display()
-                time.sleep(0.025)
-            for thread in threads:
-                matches.extend(thread.result())
+    timer = Timer().start()
+    matches = dupechecker(args.paths)
+    timer.stop()
     if matches:
-        print(f"Found {len(matches)} duplicate sets of files.")
+        print(f"Found {len(matches)} duplicate sets of files in {timer.elapsed_str}.")
         if not args.no_show:
             print(
                 griddy(
@@ -169,4 +171,4 @@ def dupechecker(args: argparse.Namespace | None = None):
 
 
 if __name__ == "__main__":
-    dupechecker(get_args())
+    main(get_args())
