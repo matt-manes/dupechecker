@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.0.0 (2023-06-07)
+
+#### Performance improvements
+
+* make a deep copy of 'paths' before popping in find_dupes
+* speed up execution by only comparing files of the same size
+#### Refactorings
+
+* rename sort_by_size to group_by_size
+* change function names
+#### Docs
+
+* update readme
+#### Others
+
+* add function import statements
+
+
 ## v0.2.1 (2023-06-01)
 
 #### Fixes
