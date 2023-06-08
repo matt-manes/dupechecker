@@ -1,1 +1,1 @@
-from dupechecker.dupechecker import group_by_size, find_dupes
+from dupechecker.dupechecker import find_dupes, group_by_size
