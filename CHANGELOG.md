@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.1 (2023-07-02)
+
+#### Others
+
+* update pathier usage
+
+
 ## v1.0.0 (2023-06-07)
 
 #### Performance improvements
