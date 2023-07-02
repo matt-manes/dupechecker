@@ -29,7 +29,7 @@ def group_by_size(paths: list[Pathier]) -> list[list[Pathier]]:
     """Returns a list of lists where each sublist is a list of files that have the same size."""
     sizes = {}
     for path in paths:
-        size = path.size()
+        size = path.size
         if size in sizes:
             sizes[size].append(path)
         else:
@@ -167,7 +167,7 @@ def main(args: argparse.Namespace | None = None):
             start_size = size()
             delete_wizard(matches) if args.delete_dupes else autodelete(matches)
             deleted_size = start_size - size()
-            print(f"Deleted {Pathier.format_size(deleted_size)}.")
+            print(f"Deleted {Pathier.format_bytes(deleted_size)}.")
     else:
         print("No duplicates detected.")
 
